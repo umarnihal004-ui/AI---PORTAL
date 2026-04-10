@@ -27,4 +27,4 @@ def _create_indexes():
     db.audit_logs.create_index("user_id")
     db.otp_logs.create_index("email")
     db.risk_scores.create_index("user_id", unique=True)
-    print("[DB] ✅ MongoDB connected and indexes created.")
+    print("[DB] MongoDB connected and indexes created.")

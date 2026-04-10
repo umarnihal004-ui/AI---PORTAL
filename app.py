@@ -48,10 +48,52 @@ app.register_blueprint(admin_bp, url_prefix="/api/admin")
 app.register_blueprint(alerts_bp, url_prefix="/api/alerts")
 app.register_blueprint(reports_bp, url_prefix="/api/reports")
 
+# ── AI Active Defense Interceptor ────────────────────────────
+from flask import request, abort, jsonify
+from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
+from utils.security_engine import monitor_security
+
+@app.before_request
+def active_defense_layer():
+    # Only monitor protected API routes
+    if request.path.startswith("/api/student") or request.path.startswith("/api/admin"):
+        try:
+            # Check if user is authenticated
+            verify_jwt_in_request()
+            user_id = get_jwt_identity()
+            
+            # Skip security check if no user identity
+            if not user_id: return
+            
+            db = get_db()
+            user = db.users.find_one({"_id": ObjectId(user_id)})
+            if not user: return
+
+            # Evaluate behavior in real-time
+            should_block, risk = monitor_security(
+                db, 
+                socketio, 
+                user_id, 
+                user.get("email"), 
+                user.get("role")
+            )
+
+            if should_block:
+                # Prediction: Block the specific anomalous action
+                return jsonify({
+                    "error": "Security Blocked",
+                    "message": "AI detected suspicious activity. This action has been blocked for system safety.",
+                    "risk_score": risk["risk_score"]
+                }), 403
+
+        except Exception:
+            # If JWT missing or invalid, ignore (standard 401 will handle it)
+            pass
+
 # ── Health Check ─────────────────────────────────────────────
 @app.route("/api/health")
 def health():
-    return {"status": "ok", "message": "AI Portal Backend Running ✅"}
+    return {"status": "ok", "message": "AI Portal Backend Running"}
 
 # ── Socket.IO Events ─────────────────────────────────────────
 @socketio.on("connect")
@@ -90,11 +132,11 @@ if __name__ == "__main__":
     scheduler.start()
 
     print("=" * 60)
-    print("  🛡️  AI Model for Predicting Technology Misuse")
-    print("  📡  Backend Server Starting...")
-    print("  🌐  URL: http://localhost:5000")
-    print("  📊  API: http://localhost:5000/api")
-    print("  ⚙️   Background Scheduler Running (Next Retrain: 7 Days)")
+    print("  AI Model for Predicting Technology Misuse")
+    print("  Backend Server Starting...")
+    print("  URL: http://localhost:5000")
+    print("  API: http://localhost:5000/api")
+    print("  Background Scheduler Running (Next Retrain: 7 Days)")
     print("=" * 60)
     
     try:

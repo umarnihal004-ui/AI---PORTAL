@@ -173,6 +173,12 @@ def student_report(student_id):
         socketio.emit(f"user_alert_{student_id}", payload)
         socketio.emit("system_event", {"type": "danger", "message": f"Data Exfil Prevented: {user.get('email')}", "ip_address": ip, "timestamp": datetime.now(timezone.utc).isoformat()})
 
+        return jsonify({
+            "error": "Security Blocked",
+            "message": "AI detected Data Exfiltration behavior (Excessive Downloads). Action Blocked.",
+            "risk_score": 95
+        }), 403
+
     # Attendance
     attendance = list(db.attendance.find({"user_id": student_id}))
     att_rows = [[a["subject"], str(a["present"]), str(a["total"]),

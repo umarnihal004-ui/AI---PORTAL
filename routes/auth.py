@@ -28,6 +28,19 @@ def login():
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
     ip = get_client_ip()
+    
+    # === Account Takeover (ATO) Prevention: Multi-Account Probing ===
+    from utils.security_engine import track_ip_emails
+    if track_ip_emails(ip, email):
+        payload = {"attack_type": "account_takeover", "attack_name": "Account Takeover", "ip_address": ip, "risk_score": 98}
+        from app import socketio
+        socketio.emit("attack_detected", payload)
+        socketio.emit("system_event", {"type": "danger", "message": f"ATO Blocked: Multiple Email Probing from {ip}", "ip_address": ip, "timestamp": datetime.now(timezone.utc).isoformat()})
+        return jsonify({
+            "error": "Security Blocked",
+            "message": "AI detected Account Takeover behavior (Multi-Account Probing).",
+            "risk_score": 98
+        }), 403
 
     user = db.users.find_one({"email": email})
 
@@ -151,6 +164,12 @@ def verify_otp_route():
                 socketio.emit("attack_detected", payload)
                 socketio.emit(f"user_alert_{str(user['_id'])}", payload)
                 socketio.emit("system_event", {"type": "danger", "message": f"Bot Attack Prevented: {email}", "ip_address": ip, "timestamp": datetime.now(timezone.utc).isoformat()})
+        
+        return jsonify({
+            "error": "Security Blocked",
+            "message": "AI detected Bot Behavior (Repeated OTP Failures). Action Blocked.",
+            "risk_score": 92
+        }), 403
         return jsonify({"error": reason}), 400
 
     user = db.users.find_one({"email": email})
