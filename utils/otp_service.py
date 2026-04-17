@@ -88,7 +88,7 @@ def send_otp_email(to_email, otp, purpose="login"):
 
     if not Config.MAIL_USERNAME:
         # Dev mode: print to console
-        print(f"\n📧 [OTP EMAIL] To: {to_email} | OTP: {otp} | Purpose: {label}\n")
+        print(f"\n[OTP EMAIL] To: {to_email} | OTP: {otp} | Purpose: {label}\n")
         return True
 
     try:
@@ -106,5 +106,5 @@ def send_otp_email(to_email, otp, purpose="login"):
     except Exception as e:
         print(f"[OTP EMAIL ERROR] {e}")
         # Fallback: print to console so development doesn't break
-        print(f"📧 [FALLBACK OTP] To: {to_email} | OTP: {otp}")
+        print(f"[FALLBACK OTP] To: {to_email} | OTP: {otp}")
         return False

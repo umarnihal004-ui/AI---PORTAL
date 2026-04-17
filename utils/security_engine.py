@@ -2,7 +2,7 @@
 # utils/security_engine.py — AI Active Defense Engine
 # ============================================================
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import request, abort
 from ml.risk_scorer import calculate_risk_score
 from ml.isolation_forest import predict as ml_predict
@@ -33,8 +33,8 @@ def track_ip_emails(ip, email):
     
     tracker["emails"].add(email)
     
-    # Block if an IP tries more than 2 different emails in 5 mins
-    if len(tracker["emails"]) > 2:
+    # Block if an IP tries more than 5 different emails in 5 mins
+    if len(tracker["emails"]) > 5:
         return True
         
     return False
@@ -122,9 +122,13 @@ def monitor_security(db, socketio, user_id, email, role):
         socketio.emit("attack_detected", payload)
         socketio.emit("system_event", {
             "type": "danger",
-            "message": f"ACTIVE BLOCK: {email} (Risk: {risk_score})",
+            "message": f"ACTIVE BLOCK: {email} (Account Locked)",
             "ip_address": ip,
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
+        
+        # Persistently lock the account in DB for prevention
+        from bson import ObjectId
+        db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"locked_until": datetime.now(timezone.utc) + timedelta(minutes=15)}})
 
     return should_block, risk_result

@@ -16,7 +16,7 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1 hour
 
     # MongoDB
-    MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+    MONGO_URI = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/")
     DB_NAME = os.getenv("DB_NAME", "ai_portal")
 
     # Email (optional — configure for real OTP)

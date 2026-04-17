@@ -10,6 +10,7 @@ from utils.otp_service import generate_otp, save_otp, verify_otp, send_otp_email
 from utils.audit_logger import log_action
 from ml.risk_scorer import calculate_risk_score
 from config import Config
+from bson import ObjectId
 
 auth_bp = Blueprint("auth", __name__)
 bcrypt = Bcrypt()
@@ -38,7 +39,7 @@ def login():
         socketio.emit("system_event", {"type": "danger", "message": f"ATO Blocked: Multiple Email Probing from {ip}", "ip_address": ip, "timestamp": datetime.now(timezone.utc).isoformat()})
         return jsonify({
             "error": "Security Blocked",
-            "message": "AI detected Account Takeover behavior (Multi-Account Probing).",
+            "message": "AI detected Account Takeover behavior. Connection blocked for system safety.",
             "risk_score": 98
         }), 403
 
@@ -254,13 +255,25 @@ def verify_otp_route():
         socketio.emit("attack_detected", socket_payload)
         socketio.emit(f"user_alert_{user_id}", socket_payload)
         
+        # === Active Prevention: Auto-Lock Account on ATO Detection ===
+        db.users.update_one(
+            {"_id": ObjectId(user_id)}, 
+            {"$set": {"locked_until": datetime.now(timezone.utc) + timedelta(minutes=15)}}
+        )
+        
         # Emit system event for live terminal
         socketio.emit("system_event", {
             "type": "danger",
-            "message": f"ML Anomaly Flagged: {email}",
+            "message": f"ACTIVE BLOCK: {email} (Account Locked)",
             "ip_address": ip,
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
+
+        return jsonify({
+            "error": "Security Blocked",
+            "message": "AI detected a sudden behavior change (ATO). Your account has been locked for safety.",
+            "risk_score": risk["risk_score"]
+        }), 403
 
     # Create JWT
     token = create_access_token(
